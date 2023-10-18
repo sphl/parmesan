@@ -43,6 +43,7 @@ impl Depot {
         num: &AtomicUsize,
         cmpid: u32,
         dir: &Path,
+        ts: u128,
     ) -> usize {
         let id = num.fetch_add(1, Ordering::Relaxed);
         trace!(
@@ -51,7 +52,7 @@ impl Depot {
             status,
             cmpid
         );
-        let new_path = get_file_name(dir, id);
+        let new_path = get_file_name(dir, id, Some(ts));
         let mut f = fs::File::create(new_path.as_path()).expect("Could not save new input file.");
         f.write_all(buf)
             .expect("Could not write seed buffer to file.");
@@ -59,13 +60,13 @@ impl Depot {
         id
     }
 
-    pub fn save(&self, status: StatusType, buf: &Vec<u8>, cmpid: u32) -> usize {
+    pub fn save(&self, status: StatusType, buf: &Vec<u8>, cmpid: u32, ts: u128) -> usize {
         match status {
             StatusType::Normal => {
-                Self::save_input(&status, buf, &self.num_inputs, cmpid, &self.dirs.inputs_dir)
+                Self::save_input(&status, buf, &self.num_inputs, cmpid, &self.dirs.inputs_dir, ts)
             },
             StatusType::Timeout => {
-                Self::save_input(&status, buf, &self.num_hangs, cmpid, &self.dirs.hangs_dir)
+                Self::save_input(&status, buf, &self.num_hangs, cmpid, &self.dirs.hangs_dir, ts)
             },
             StatusType::Crash => Self::save_input(
                 &status,
@@ -73,6 +74,7 @@ impl Depot {
                 &self.num_crashes,
                 cmpid,
                 &self.dirs.crashes_dir,
+                ts,
             ),
             _ => 0,
         }
@@ -87,7 +89,7 @@ impl Depot {
     }
 
     pub fn get_input_buf(&self, id: usize) -> Vec<u8> {
-        let path = get_file_name(&self.dirs.inputs_dir, id);
+        let path = get_file_name(&self.dirs.inputs_dir, id, None);
         read_from_file(&path)
     }
 

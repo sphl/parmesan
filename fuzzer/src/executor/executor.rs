@@ -225,7 +225,8 @@ impl Executor {
             );
             // crash or hang
             if self.branches.has_new(unmem_status, self.is_directed).0 {
-                self.depot.save(unmem_status, &buf, cmpid);
+                let fuzz_dur = self.global_stats.get_fuzz_dur();
+                self.depot.save(unmem_status, &buf, cmpid, fuzz_dur);
             }
         }
         skip
@@ -238,7 +239,8 @@ impl Executor {
         if has_new_path {
             self.has_new_path = true;
             self.local_stats.find_new(&status);
-            let id = self.depot.save(status, &buf, cmpid);
+            let fuzz_dur = self.global_stats.get_fuzz_dur();
+            let id = self.depot.save(status, &buf, cmpid, fuzz_dur);
 
             if status == StatusType::Normal {
                 self.local_stats.avg_edge_num.update(edge_num as f32);

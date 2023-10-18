@@ -106,6 +106,10 @@ impl ChartStats {
         self.speed = Average::new(speed as f32, 0);
     }
 
+    pub fn get_fuzz_dur(&self) -> u128 {
+        return self.init_time.0.elapsed().as_millis();
+    }
+
     pub fn mini_log(&self) -> String {
         format!(
             "{}, {}, {}, {}, {}, {}",

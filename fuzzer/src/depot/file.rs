@@ -4,8 +4,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub fn get_file_name(dir: &Path, id: usize) -> PathBuf {
-    let file_name = format!("id:{:06}", id);
+pub fn get_file_name(dir: &Path, id: usize, opt_ts: Option<u128>) -> PathBuf {
+    let file_name = match opt_ts {
+        None => format!("id:{:06}", id),
+        Some(msec) => format!("id:{:06}_{}", id, msec),
+    };
     dir.join(file_name)
 }
 
