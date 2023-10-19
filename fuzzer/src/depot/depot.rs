@@ -1,6 +1,6 @@
 use super::*;
-use crate::{cond_stmt::CondStmt, executor::StatusType};
 use crate::dyncfg::cfg::ControlFlowGraph;
+use crate::{cond_stmt::CondStmt, executor::StatusType};
 use rand;
 use std::{
     fs,
@@ -33,7 +33,7 @@ impl Depot {
             num_hangs: AtomicUsize::new(0),
             num_crashes: AtomicUsize::new(0),
             dirs: DepotDir::new(in_dir, out_dir),
-            cfg
+            cfg,
         }
     }
 
@@ -43,7 +43,7 @@ impl Depot {
         num: &AtomicUsize,
         cmpid: u32,
         dir: &Path,
-        ts: u128,
+        opt_ts: Option<u128>,
     ) -> usize {
         let id = num.fetch_add(1, Ordering::Relaxed);
         trace!(
@@ -52,7 +52,7 @@ impl Depot {
             status,
             cmpid
         );
-        let new_path = get_file_name(dir, id, Some(ts));
+        let new_path = get_file_name(dir, id, opt_ts);
         let mut f = fs::File::create(new_path.as_path()).expect("Could not save new input file.");
         f.write_all(buf)
             .expect("Could not write seed buffer to file.");
@@ -60,21 +60,37 @@ impl Depot {
         id
     }
 
-    pub fn save(&self, status: StatusType, buf: &Vec<u8>, cmpid: u32, ts: u128) -> usize {
+    pub fn save(
+        &self,
+        status: StatusType,
+        buf: &Vec<u8>,
+        cmpid: u32,
+        opt_ts: Option<u128>,
+    ) -> usize {
         match status {
-            StatusType::Normal => {
-                Self::save_input(&status, buf, &self.num_inputs, cmpid, &self.dirs.inputs_dir, ts)
-            },
-            StatusType::Timeout => {
-                Self::save_input(&status, buf, &self.num_hangs, cmpid, &self.dirs.hangs_dir, ts)
-            },
+            StatusType::Normal => Self::save_input(
+                &status,
+                buf,
+                &self.num_inputs,
+                cmpid,
+                &self.dirs.inputs_dir,
+                opt_ts,
+            ),
+            StatusType::Timeout => Self::save_input(
+                &status,
+                buf,
+                &self.num_hangs,
+                cmpid,
+                &self.dirs.hangs_dir,
+                opt_ts,
+            ),
             StatusType::Crash => Self::save_input(
                 &status,
                 buf,
                 &self.num_crashes,
                 cmpid,
                 &self.dirs.crashes_dir,
-                ts,
+                opt_ts,
             ),
             _ => 0,
         }
@@ -123,7 +139,6 @@ impl Depot {
 
         for mut cond in conds {
             if cond.is_desirable {
-
                 let cfg = self.cfg.read().unwrap();
                 //let distance = cfg.score_for_cmp(cond.base.cmpid);
                 let distance = cfg.score_for_cmp_inp(cond.base.cmpid, cond.variables.clone());
