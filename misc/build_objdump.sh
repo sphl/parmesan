@@ -13,10 +13,11 @@ mkdir build # Create a build dir
 # texinfo required to build binutils
 apt-get install -y texinfo
 cd binutils-2.34
-CC=gclang CXX=gclang++ ./configure --with-pic
+export LLVM_COMPILER=clang
+CC=wllvm CXX=wllvm++ ./configure --with-pic
 make -j$(nprocs) # Build in parallel
 cd binutils/
-get-bc objdump
+extract-bc objdump
 # Will create the file objdump.bc
 mkdir -p ../../build
 cp objdump.bc ../../build
