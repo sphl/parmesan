@@ -3,8 +3,8 @@ FROM ubuntu:20.04
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     apt-get -y upgrade && \
-    apt-get install -y git build-essential wget zlib1g-dev golang-go python3-pip python3-dev python-is-python3 build-essential cmake && \
-    #apt-get install -y git build-essential wget zlib1g-dev golang-go python-pip python-dev build-essential cmake && \
+    # apt-get install -y git build-essential wget zlib1g-dev golang-go python3-pip python3-dev python-is-python3 build-essential cmake && \
+    apt-get install -y git build-essential wget zlib1g-dev python3-pip python3-dev python-is-python3 build-essential cmake && \
     apt-get clean
 
 
@@ -23,9 +23,8 @@ RUN ./build/install_rust.sh
 RUN PREFIX=/ ./build/install_llvm.sh
 RUN ./build/install_tools.sh
 RUN ./build/build.sh
-#RUN ./build/install_pin_mode.sh
-# ParmeSan does not support PIN atm
+# RUN ./build/install_pin_mode.sh
 
 VOLUME ["/data"]
 WORKDIR /data
-#ENTRYPOINT [ "/opt/env.init" ]
+# ENTRYPOINT [ "/opt/env.init" ]
