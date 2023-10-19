@@ -3,11 +3,13 @@ use super::{limit::SetLimit, *};
 use crate::{
     branches, command,
     cond_stmt::{self, NextState},
-    depot, stats, track,
-    dyncfg::cfg::{CmpId},
+    depot,
+    dyncfg::cfg::CmpId,
+    stats, track,
 };
 use angora_common::{config, defs, tag::TagSeg};
 
+use itertools::Itertools;
 use std::{
     collections::HashMap,
     path::Path,
@@ -19,7 +21,6 @@ use std::{
     time,
 };
 use wait_timeout::ChildExt;
-use itertools::Itertools;
 
 pub struct Executor {
     pub cmd: command::CommandOpt,
@@ -225,7 +226,7 @@ impl Executor {
             );
             // crash or hang
             if self.branches.has_new(unmem_status, self.is_directed).0 {
-                let fuzz_dur = self.global_stats.get_fuzz_dur();
+                let fuzz_dur = self.global_stats.read().unwrap().get_fuzz_dur();
                 self.depot.save(unmem_status, &buf, cmpid, fuzz_dur);
             }
         }
@@ -234,12 +235,13 @@ impl Executor {
 
     fn do_if_has_new(&mut self, buf: &Vec<u8>, status: StatusType, _explored: bool, cmpid: u32) {
         // new edge: one byte in bitmap
-        let (has_new_path, has_new_edge, edge_num) = self.branches.has_new(status, self.is_directed);
+        let (has_new_path, has_new_edge, edge_num) =
+            self.branches.has_new(status, self.is_directed);
 
         if has_new_path {
             self.has_new_path = true;
             self.local_stats.find_new(&status);
-            let fuzz_dur = self.global_stats.get_fuzz_dur();
+            let fuzz_dur = self.global_stats.read().unwrap().get_fuzz_dur();
             let id = self.depot.save(status, &buf, cmpid, fuzz_dur);
 
             if status == StatusType::Normal {
@@ -384,11 +386,10 @@ impl Executor {
             self.cmd.enable_exploitation,
         );
 
-        let mut ind_dominator_offsets : HashMap<CmpId, Vec<TagSeg>> = HashMap::new();
+        let mut ind_dominator_offsets: HashMap<CmpId, Vec<TagSeg>> = HashMap::new();
         let mut ind_cond_list = vec![];
 
-
-        for (a,b) in cond_list.clone().into_iter().tuple_windows() {
+        for (a, b) in cond_list.clone().into_iter().tuple_windows() {
             let mut dyncfg = self.depot.cfg.write().unwrap();
             let edge = (a.base.cmpid, b.base.cmpid);
             let _is_new = dyncfg.add_edge(edge);
@@ -404,8 +405,7 @@ impl Executor {
             if b.base.last_callsite != 0 {
                 debug!("ADD Indirect edge {:?}: {}!!", edge, b.base.last_callsite);
                 dyncfg.set_edge_indirect(edge, b.base.last_callsite);
-                let dominators = 
-                  dyncfg.get_callsite_dominators(b.base.last_callsite);
+                let dominators = dyncfg.get_callsite_dominators(b.base.last_callsite);
                 let mut fixed_offsets = vec![];
                 for d in dominators {
                     if let Some(offsets) = ind_dominator_offsets.get(&d) {
@@ -414,12 +414,11 @@ impl Executor {
                 }
                 dyncfg.set_magic_bytes(edge, &buf, &fixed_offsets);
 
-
                 // Set offsets
                 let mut fixed_cond = b.clone();
                 fixed_cond.offsets.append(&mut fixed_offsets);
                 let var_len = fixed_cond.variables.len();
-                for (i,v) in dyncfg.get_magic_bytes(edge) {
+                for (i, v) in dyncfg.get_magic_bytes(edge) {
                     if i < var_len - 1 {
                         fixed_cond.variables[i] = v;
                         debug!("FIX VAR {} to '{}'", i, v);
@@ -427,10 +426,7 @@ impl Executor {
                 }
                 ind_cond_list.push(fixed_cond);
             }
-
-            
         }
-
 
         for cond in cond_list.iter_mut() {
             let dyncfg = self.depot.cfg.read().unwrap();
@@ -492,14 +488,14 @@ impl Executor {
                 } else {
                     StatusType::Crash
                 }
-            }
+            },
             None => {
                 // Timeout
                 // child hasn't exited yet
                 child.kill().expect("Could not send kill signal to child.");
                 child.wait().expect("Error during waiting for child.");
                 StatusType::Timeout
-            }
+            },
         };
         ret
     }
