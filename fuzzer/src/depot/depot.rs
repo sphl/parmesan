@@ -74,7 +74,7 @@ impl Depot {
                 &self.num_inputs,
                 cmpid,
                 &self.dirs.inputs_dir,
-                opt_ts,
+                None,
             ),
             StatusType::Timeout => Self::save_input(
                 &status,
